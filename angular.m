@@ -6,13 +6,13 @@ new_time = linspace(0, 0.1, 1000);
 
 angles = 0:10:50;
 data_list = {};
+rotation_matrices = {};
 
+k = 1;
 for i = 0:10:50
-    % Cargar el archivo CSV correspondiente
     filename = ['Displacementxyz_', num2str(i), '.csv'];
     data = readmatrix(filename);
-    
-    % Calcular los ángulos en radianes usando atan2
+   
     x_data = data(:, 1);
     y_data = data(:, 2);
     z_data = data(:, 3);
@@ -21,13 +21,109 @@ for i = 0:10:50
     theta_y = atan2(x_data, z_data);
     theta_z = atan2(y_data, x_data);
     
-    % Sobrescribir los datos originales con los ángulos calculados
     data(:, 1) = theta_x;
     data(:, 2) = theta_y;
     data(:, 3) = theta_z;
+
+    rotation_matrices{k}={};
     
-    % Agregar los datos procesados a data_list
+    for j = 1:1:length(theta_x)
+
+        R_x = [1 0 0;
+               0 cos(theta_x(j)) -sin(theta_x(j));
+               0 sin(theta_x(j)) cos(theta_x(j))];
+    
+        R_y = [cos(theta_y(j)) 0 sin(theta_y(j));
+               0 1 0;
+               -sin(theta_y(j)) 0 cos(theta_y(j))];
+    
+        R_z = [cos(theta_z(j)) -sin(theta_z(j)) 0;
+               sin(theta_z(j)) cos(theta_z(j)) 0;
+               0 0 1];
+    
+        R_total = R_z * R_y * R_x;
+        rotation_matrices{k}{end+1} = R_total;
+    end
+
     data_list{end+1} = data;
+    k = k + 1;
+end
+
+%% Rotational to Euler
+
+eul_total = {};
+
+for i = 1:6
+    eul_total{i} = {};
+    for j = 1:101
+        rotm = rotation_matrices{i}{j};
+        eul = rotm2eul(rotm, 'XYZ');
+        eul_total{i}{j} = eul;
+    end
+end
+
+%% Plotting
+figure;
+
+for i = 1:6
+    toPlot = [];
+    for j=1:101
+        for k=1:3
+            toPlot(j,k) = eul_total{i}{j}(k);
+        end
+    end
+    for k = 1:3
+        subplot(1, 3, k);
+        hold on
+        plot(time, toPlot(:,k), 'LineWidth', 3);
+        legend(arrayfun(@(x) sprintf('\\alpha = %d^\\circ', x), ...
+        angles, 'UniformOutput', false));    
+    end
+end
+
+%% Plotting
+figure;
+
+for i = 1:6
+    toPlot = [];
+    for j=1:101
+        for k=1:3
+            toPlot(j,k) = eul_total{i}{j}(k);
+        end
+    end
+
+    toPlot = diff(toPlot)/0.001;
+
+    for k = 1:3
+        subplot(1, 3, k);
+        hold on
+        plot(time(1:end-1), toPlot(:,k), 'LineWidth', 3);
+        legend(arrayfun(@(x) sprintf('\\alpha = %d^\\circ', x), ...
+        angles, 'UniformOutput', false));  
+    end
+end
+
+%% Plotting
+figure;
+
+for i = 1:6
+    toPlot = [];
+    for j=1:101
+        for k=1:3
+            toPlot(j,k) = eul_total{i}{j}(k);
+        end
+    end
+
+    toPlot = diff(diff(toPlot))/0.001;
+
+    for k = 1:3
+        subplot(1, 3, k);
+        hold on
+        plot(time(1:end-2), toPlot(:,k), 'LineWidth', 3);
+        legend(arrayfun(@(x) sprintf('\\alpha = %d^\\circ', x), ...
+        angles, 'UniformOutput', false));  
+        xlim([0 0.012]);
+    end
 end
 
 %% Interpolation
@@ -51,100 +147,60 @@ for i = 1:length(data_list)
     data_interp_all = [data_interp_all, data_interp];
     velocity_interp_all = [velocity_interp_all, velocity_interp];
     acceleration_interp_all = [acceleration_interp_all, acceleration_interp];
+    
 end
 
-%%
-figure;
-plot(new_time, data_interp_all(:, 1:3:end), 'LineWidth', 3);
-xlabel('Time (s)');
-ylabel('\theta_x (rad)');
-title('Rotational displacement \theta_x');
-legend(sprintf('\\alpha = %d^\\circ', angles(1)), sprintf('\\alpha = %d^\\circ', angles(2)), ...
-    sprintf('\\alpha = %d^\\circ', angles(3)), sprintf('\\alpha = %d^\\circ', angles(4)), ...
-    sprintf('\\alpha = %d^\\circ', angles(5)), sprintf('\\alpha = %d^\\circ', angles(6)));
+%% Rotational matrix
 
+for i = 1:3
+    figure;
+    plot(new_time, data_interp_all(:, i:3:end), 'LineWidth', 3);
+    xlabel('Time (s)');
+    ylabel(ylabel_displacement);
+    title(velocity_titles{i});
+    legend(arrayfun(@(x) sprintf('\\alpha = %d^\\circ', x), ...
+        angles, 'UniformOutput', false));
+end
 
-figure;
-plot(new_time, data_interp_all(:, 2:3:end), 'LineWidth', 3);
-xlabel('Time (s)');
-ylabel('\theta_y (rad)');
-title('Rotational displacement \theta_y');
-legend(sprintf('\\alpha = %d^\\circ', angles(1)), sprintf('\\alpha = %d^\\circ', angles(2)), ...
-    sprintf('\\alpha = %d^\\circ', angles(3)), sprintf('\\alpha = %d^\\circ', angles(4)), ...
-    sprintf('\\alpha = %d^\\circ', angles(5)), sprintf('\\alpha = %d^\\circ', angles(6)));
+%% Graphs
 
+displacement_titles = {'Displacement (x)', 'Displacement (y)', 'Displacement (z)'};
+velocity_titles = {'Velocity (x)', 'Velocity (y)', 'Velocity (z)'};
+acceleration_titles = {'Acceleration (x)', 'Acceleration (y)', 'Acceleration (z)'};
 
-figure;
-plot(new_time, data_interp_all(:, 3:3:end), 'LineWidth', 3);
-xlabel('Time (s)');
-ylabel('\theta_z (rad)');
-title('Rotational displacement \theta_z');
-legend(sprintf('\\alpha = %d^\\circ', angles(1)), sprintf('\\alpha = %d^\\circ', angles(2)), ...
-    sprintf('\\alpha = %d^\\circ', angles(3)), sprintf('\\alpha = %d^\\circ', angles(4)), ...
-    sprintf('\\alpha = %d^\\circ', angles(5)), sprintf('\\alpha = %d^\\circ', angles(6)));
+ylabel_velocity = 'Velocity (rad/s)';
+ylabel_acceleration = 'Acceleration (g)';
+ylabel_displacement = 'Displacement (rad)';
 
-%%
-% Graficar velocidad
-figure;
-plot(new_time, velocity_interp_all(:, 1:3:end), 'LineWidth', 3);
-xlabel('Time (s)');
-ylabel('Velocity (rad/s)');
-title('Velocity (x)');
-legend(sprintf('\\alpha = %d^\\circ', angles(1)), sprintf('\\alpha = %d^\\circ', angles(2)), ...
-    sprintf('\\alpha = %d^\\circ', angles(3)), sprintf('\\alpha = %d^\\circ', angles(4)), ...
-    sprintf('\\alpha = %d^\\circ', angles(5)), sprintf('\\alpha = %d^\\circ', angles(6)));
+% Displacement
+for i = 1:3
+    figure;
+    plot(new_time, data_interp_all(:, i:3:end), 'LineWidth', 3);
+    xlabel('Time (s)');
+    ylabel(ylabel_displacement);
+    title(velocity_titles{i});
+    legend(arrayfun(@(x) sprintf('\\alpha = %d^\\circ', x), ...
+        angles, 'UniformOutput', false));
+end
 
-% Graficar velocidad
-figure;
-plot(new_time, velocity_interp_all(:, 2:3:end), 'LineWidth', 3);
-xlabel('Time (s)');
-ylabel('Velocity (rad/s)');
-title('Velocity (y)');
-legend(sprintf('\\alpha = %d^\\circ', angles(1)), sprintf('\\alpha = %d^\\circ', angles(2)), ...
-    sprintf('\\alpha = %d^\\circ', angles(3)), sprintf('\\alpha = %d^\\circ', angles(4)), ...
-    sprintf('\\alpha = %d^\\circ', angles(5)), sprintf('\\alpha = %d^\\circ', angles(6)));
+% Velocity
+for i = 1:3
+    figure;
+    plot(new_time, velocity_interp_all(:, i:3:end), 'LineWidth', 3);
+    xlabel('Time (s)');
+    ylabel(ylabel_velocity);
+    title(velocity_titles{i});
+    legend(arrayfun(@(x) sprintf('\\alpha = %d^\\circ', x), ...
+        angles, 'UniformOutput', false));
+end
 
-% Graficar velocidad
-figure;
-plot(new_time, velocity_interp_all(:, 3:3:end), 'LineWidth', 3);
-xlabel('Time (s)');
-ylabel('Velocity (rad/s)');
-title('Velocity (z)');
-legend(sprintf('\\alpha = %d^\\circ', angles(1)), sprintf('\\alpha = %d^\\circ', angles(2)), ...
-    sprintf('\\alpha = %d^\\circ', angles(3)), sprintf('\\alpha = %d^\\circ', angles(4)), ...
-    sprintf('\\alpha = %d^\\circ', angles(5)), sprintf('\\alpha = %d^\\circ', angles(6)));
-
-
-
-
-%%
-
-% Graficar aceleración
-figure;
-plot(new_time, acceleration_interp_all(:, 1:3:end), 'LineWidth', 3);
-xlabel('Time (s)');
-ylabel('Acceleration (g)');
-title('Acceleration (x)');
-legend(sprintf('\\alpha = %d^\\circ', angles(1)), sprintf('\\alpha = %d^\\circ', angles(2)), ...
-    sprintf('\\alpha = %d^\\circ', angles(3)), sprintf('\\alpha = %d^\\circ', angles(4)), ...
-    sprintf('\\alpha = %d^\\circ', angles(5)), sprintf('\\alpha = %d^\\circ', angles(6)));
-
-% Graficar aceleración
-figure;
-plot(new_time, acceleration_interp_all(:, 2:3:end), 'LineWidth', 3);
-xlabel('Time (s)');
-ylabel('Acceleration (g)');
-title('Acceleration (y)');
-legend(sprintf('\\alpha = %d^\\circ', angles(1)), sprintf('\\alpha = %d^\\circ', angles(2)), ...
-    sprintf('\\alpha = %d^\\circ', angles(3)), sprintf('\\alpha = %d^\\circ', angles(4)), ...
-    sprintf('\\alpha = %d^\\circ', angles(5)), sprintf('\\alpha = %d^\\circ', angles(6)));
-
-% Graficar aceleración
-figure;
-plot(new_time, acceleration_interp_all(:, 3:3:end), 'LineWidth', 3);
-xlabel('Time (s)');
-ylabel('Acceleration (g)');
-title('Acceleration (z)');
-legend(sprintf('\\alpha = %d^\\circ', angles(1)), sprintf('\\alpha = %d^\\circ', angles(2)), ...
-    sprintf('\\alpha = %d^\\circ', angles(3)), sprintf('\\alpha = %d^\\circ', angles(4)), ...
-    sprintf('\\alpha = %d^\\circ', angles(5)), sprintf('\\alpha = %d^\\circ', angles(6)));
+% Acceleration
+for i = 1:3
+    figure;
+    plot(new_time, acceleration_interp_all(:, i:3:end), 'LineWidth', 3);
+    xlabel('Time (s)');
+    ylabel(ylabel_acceleration);
+    title(acceleration_titles{i});
+    legend(arrayfun(@(x) sprintf('\\alpha = %d^\\circ', x), ...
+        angles, 'UniformOutput', false));
+end
