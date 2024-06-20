@@ -2,7 +2,7 @@ clc; clear all; close all;
 
 %Matrix with the info from the simulations. 
 %Column 1 is 0º... and Column 6 is 50º.
-data = readmatrix('Simulation_results_new.csv');
+data = readmatrix('Simulation_results.csv');
 angles = 0:10:50;
 time = 0:0.004:0.1;
 
@@ -15,7 +15,7 @@ new_time = 0:0.0001:0.1;
 interpolation = interp1(time, data, new_time, "makima");
 
 figure;
-plot(new_time, interpolation)
+plot(new_time, interpolation, 'LineWidth',3)
 hold on
 plot(time, data,'ro')
 title('Displacement')
@@ -55,10 +55,10 @@ ylabel('Velocity (m/s)')
 velocity_2 = interp1(time(1:end-1), velocity, new_time, "makima");
 
 subplot(1, 2, 2);
-plot(new_time, velocity_2)
+plot(new_time, velocity_2, 'LineWidth', 3)
 title('Interpolation from the original points')
 hold on
-plot(time(1:end-1), velocity,'ro')
+%plot(time(1:end-1), velocity,'ro')
 hold off
 
 legend('0º', '10º', '20º', '30º', '40º', '50º', 'Location','best')
@@ -69,7 +69,7 @@ ylabel('Velocity (m/s)')
 figure;
 
 %Initial acceleration assessment with the OG data:
-acceleration = diff(diff(data))/(1000*0.004); %known points
+acceleration = diff(diff(data))/(9800*0.004); %known points
 
 % Calculated acceleration from the interpolation of the velocity (smooth)
 % Differential from the interpolation
@@ -93,7 +93,7 @@ ylabel('Acceleration (g)')
 acceleration_2 = interp1(time(1:end-2), acceleration, new_time, "makima");
 
 subplot(1, 2, 2);
-plot(new_time, acceleration_2/9.8)
+plot(new_time, acceleration_2/9.8, 'LineWidth', 3)
 title('Interpolation from the original points')
 hold on
 plot(time(1:end-2), acceleration/9.8,'ro')
@@ -113,7 +113,7 @@ data_0 = readmatrix('Results_0.csv');
 interpolation_velocity = interp1(time, data_0, new_time, "makima");
 
 subplot(1, 2, 1);
-plot(new_time, interpolation_velocity(:,2)/100)
+plot(new_time, interpolation_velocity(:,2)/100, "LineWidth", 2)
 title('Interpolation from the results in Fusion')
 hold on
 plot(time, data_0(:,2)/100,'ro')
@@ -122,7 +122,7 @@ xlabel('Time (s)')
 ylabel('Velocity (m/s)')
 
 subplot(1, 2, 2);
-plot(new_time, velocity_2(:,1))
+plot(new_time, velocity_2(:,1), "LineWidth", 2)
 title('Interpolation from the original points')
 hold on
 plot(time(1:end-1), velocity(:,1),'ro')
